@@ -281,7 +281,7 @@ function getNoun(y) {
       return scifi_default;
   }
 }
-
+var pizzaList;
 var adjectives = ["dark", "color", "whimsical", "shiny", "noisy", "apocalyptic", "insulting", "praise", "scientific"];  // types of adjectives for pizza titles
 var nouns = ["animals", "everyday", "fantasy", "gross", "horror", "jewelry", "places", "scifi"];                        // types of nouns for pizza titles
 
@@ -497,14 +497,26 @@ function logAverageFrame(times) {   // times is the array of User Timing measure
 // https://www.igvita.com/slides/2012/devtools-tips-and-tricks/jank-demo.html
 
 // Moves the sliding background pizzas based on scroll position
+
 function updatePositions() {
   frame++;
   window.performance.mark("mark_start_frame");
 
-  var items = document.querySelectorAll('.mover');
-  for (var i = 0; i < items.length; i++) {
-    var phase = Math.sin((document.body.scrollTop / 1250) + (i % 5));
-    items[i].style.left = items[i].basicLeft + 100 * phase + 'px';
+  var sT = document.body.scrollTop / 1250;
+  var allPhase = [
+    Math.sin(sT) * 100,
+    Math.sin(sT + 1) * 100,
+    Math.sin(sT + 2) * 100,
+    Math.sin(sT + 3) * 100,
+    Math.sin(sT + 4) * 100
+  ];
+
+  for (var i = 0, l = pizzaList.length, d; i < l; i++) {
+    var pizza = pizzaList[i];
+    //d = pizza.basicLeft + allPhase[i%5];
+    //pizza.style.transform = 'translate3d(' + d + 'px, 0, 0)';
+    var phase = allPhase[i % 5];
+    pizza.style.left = pizza.basicLeft + phase + 'px';
   }
 
   // User Timing API to the rescue again. Seriously, it's worth learning.
@@ -516,23 +528,55 @@ function updatePositions() {
     logAverageFrame(timesToUpdatePosition);
   }
 }
+function generateBgPizzas() {
+  var parent = document.getElementById("movingPizzas1");
+  if (pizzaList) {
+      parent.innerHTML = "";
+  }
+  var windowHeight = window.innerHeight;
+  var windowWidth = window.innerWidth;
+  var s = 256;
+  var numCols = Math.ceil(windowWidth/s);
+  var numRows = Math.ceil(windowHeight/s);
+  var numPizzas = numCols * numRows;
+
+  for (var i = 0; i < numPizzas; i++) {
+    var elem = document.createElement('img');
+    elem.className = 'mover';
+    elem.src = "images/pizza_bg.png";
+    elem.basicLeft = (i % numCols) * s;
+    elem.style.top = (Math.floor(i / numCols) * s) + 'px';
+    parent.appendChild(elem);
+  }
+  pizzaList = document.querySelectorAll(".mover");
+  updatePositions();
+}
 
 // runs updatePositions on scroll
 window.addEventListener('scroll', updatePositions);
 
 // Generates the sliding pizzas when the page loads.
-document.addEventListener('DOMContentLoaded', function() {
-  var cols = 8;
-  var s = 256;
-  for (var i = 0; i < 200; i++) {
-    var elem = document.createElement('img');
-    elem.className = 'mover';
-    elem.src = "images/pizza.png";
-    elem.style.height = "100px";
-    elem.style.width = "73.333px";
-    elem.basicLeft = (i % cols) * s;
-    elem.style.top = (Math.floor(i / cols) * s) + 'px';
-    document.querySelector("#movingPizzas1").appendChild(elem);
-  }
-  updatePositions();
-});
+document.addEventListener('DOMContentLoaded', generateBgPizzas);
+
+// Generates the sliding pizzas when the window resized.
+//Optimized resize event handler
+(function() {
+    var throttle = function(type, name, obj) {
+        obj = obj || window;
+        var running = false;
+        var func = function() {
+            if (running) { return; }
+            running = true;
+             requestAnimationFrame(function() {
+                obj.dispatchEvent(new CustomEvent(name));
+                running = false;
+            });
+        };
+        obj.addEventListener(type, func);
+    };
+    /* init - you can init any event */
+    throttle("resize", "optimizedResize");
+})();
+
+// handle event
+window.addEventListener("optimizedResize", generateBgPizzas);
